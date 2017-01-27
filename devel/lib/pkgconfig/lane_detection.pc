@@ -1,0 +1,8 @@
+prefix=/home/zach/thesis/devel
+
+Name: lane_detection
+Description: Description of lane_detection
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/zach/thesis/devel/lib 
+Requires: 

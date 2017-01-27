@@ -1,0 +1,8 @@
+prefix=/home/zach/thesis/devel
+
+Name: beginner_tutorials
+Description: Description of beginner_tutorials
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/zach/thesis/devel/lib 
+Requires: 

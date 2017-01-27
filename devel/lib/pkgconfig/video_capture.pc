@@ -1,0 +1,8 @@
+prefix=/home/zach/thesis/devel
+
+Name: video_capture
+Description: Description of video_capture
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/zach/thesis/devel/lib 
+Requires: 

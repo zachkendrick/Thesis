@@ -1,0 +1,2 @@
+lane_detection:video_capture
+-DCATKIN_DEVEL_PREFIX=/home/zach/thesis/devel -DCMAKE_INSTALL_PREFIX=/home/zach/thesis/install -G Unix Makefiles
