@@ -39,17 +39,18 @@ using namespace tf2;
 const static int ANGLE_BINS = 60; 
 const static int DISPLACE_BINS = 60;
 
-// the center of the road for horizontal displacement
-const static float ROAD_CENTER = 0.0;
+// the width of the road for horizontal displacement in rviz units
+const static float ROAD_WIDTH = 3.0;
 
 // car pose publisher
 ros::Publisher pose_pub;
 
 // functions
-Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > points);
-float lineSegmentAngle(float p1x, float p1y, float p2x, float p2y);
-float lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const float ROAD_CENTER);
+Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > points, const int id);
+int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y);
+int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const int id);
 Point2f getHistogramMode(Mat histogram);
+Point2f getHistogramMean(Mat histogram);
 
 
 
@@ -71,13 +72,13 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
     Mat histDisplay;
 
     // build a histogram of the angle/horizontal displacement
-    hist = histogram2D(msg->points);
-    // cout << *msg << endl;
+    hist = histogram2D(msg->points, msg->id);
 
     // find the mode (L-0 norm) of the histogram
     Point2f angle_displacement = getHistogramMode(hist);
-    cout << angle_displacement.x << endl;
-    cout << angle_displacement.y << endl;
+
+    // find the mean (L-1 norm) of the histogram
+    angle_displacement = getHistogramMean(hist);
 
     // publish car pose
     visualization_msgs::Marker car_pose;
@@ -100,7 +101,7 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
 
     // set the angle of the car
     tf2::Quaternion quat;
-    quat.setRPY(0.0, 0.0, M_PI/2.0 + angle_displacement.x);
+    quat.setRPY(0.0, 0.0,  M_PI + angle_displacement.x);
     car_pose.pose.orientation.x = quat.x();
     car_pose.pose.orientation.y = quat.y();
     car_pose.pose.orientation.z = quat.z();
@@ -114,8 +115,12 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
     // publish the car pose
     pose_pub.publish(car_pose);
 
+    if(angle_displacement.x < 60 && angle_displacement.y < 60) {
+    hist.at<float>(angle_displacement.x, angle_displacement.y) = 0.5;
+    }
+
     // display histogram
-    resize(hist, histDisplay, Size(300, 300), cv::INTER_NEAREST);
+    resize(hist, histDisplay, Size(300, 300), 0, 0, cv::INTER_NEAREST);
     imshow("histogram", histDisplay);
     cv::waitKey(1);
 }
@@ -128,12 +133,12 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
       points for a given frame. The histogram has angle on the veritcle
       exis and displacement on the horizontal axis. 
    Parameters:
-      const vector<geometry_msgs::Point_<std::allocator<void> > > points - vector of lane line points
+      const visualization_msgs::MarkerConstPtr& msg - pointer containing lane markings message
    Returns:
       Mat - A 2D histogram of size ANGLE_BINSxDISPLACE_BINS
 */
 
-Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > points) {
+Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > points, const int id) {//const vector<geometry_msgs::Point_<std::allocator<void> > > points, const vector<geometry_msgs::id_<std::allocator<void> > > id) {
 
     // 2D histogram of horizontal displacement and angle of car
     Mat hist = Mat(ANGLE_BINS, DISPLACE_BINS, CV_32F, double(0));
@@ -145,8 +150,8 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
     // compute angle and displacement of line segments
     for(size_t i = 0; i < points.size(); i+=2) {
         angle = lineSegmentAngle(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
-        displace = lineSegmentDisplacement(points[i].x, points[i].y, points[i+1].x, points[i+1].y, ROAD_CENTER);
-        hist.at<float>(abs(int(((angle/M_PI)*ANGLE_BINS)+0.5)), int(displace))++;
+        displace = lineSegmentDisplacement(points[i].x, points[i].y, points[i+1].x, points[i+1].y, id);
+        hist.at<float>(angle , displace)++;
     }
 
     return hist;
@@ -158,19 +163,21 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
    Function:
       Computes the angle of a line segment in radians given
       the cartesian coordinates of the end points that
-      define the line segment.
+      define the line segment and returns the histogram bin.
    Parameters:
       float p1x - x value of the first point
       float p1y - y value of the first point
       float p2x - x value of the second point
       float p2y - y value of the second point
    Returns:
-      float - angle in radians
+      float - histogram for the angle
 */
 
-float lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
+int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
 
-    return atan((p1x - p2x)/(p1y - p2y));
+    float angle = atan((p2y - p1y)/(p2x - p1x));
+    return int(((angle/M_PI)*ANGLE_BINS) + ANGLE_BINS/2);
+
 }
 
 
@@ -185,14 +192,33 @@ float lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
       float p1y - y value of the first point
       float p2x - x value of the second point
       float p2y - y value of the second point
-      const float ROAD_CENTER - the horizontal position of the road center
+      const int id - the message id of the lane lines, id=2 (white lanes) and id=3 (yellow lanes)
+      const float ROAD_WIDTH - the width of a lane in a roadway in rviz units
    Returns:
       float - horizontal displacement
 */
 
-float lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const float ROAD_CENTER) {
+int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const int id) {
 
-    return 15.0; // TODO: FIX DISPLACEMENT!!!
+    // find the midpoint of the line segment along the horizontal displacement
+    float midpoint = (p1y + p2y)/2;
+
+    // resulting displacment from center of the road
+    float displacement = 0.0;
+
+    // white lanes
+    if(id == 2 && midpoint >= 0) {
+        displacement = -ROAD_WIDTH/2 + midpoint;
+    }
+
+    // yellow lanes
+    else if(id == 3 && midpoint <= 0) {
+        displacement = ROAD_WIDTH/2 - midpoint;
+    }
+
+    displacement = int(((displacement/ROAD_WIDTH)*DISPLACE_BINS) + DISPLACE_BINS/2);
+
+    return displacement; 
 }
 
 
@@ -218,8 +244,37 @@ Point2f getHistogramMode(Mat histogram) {
     minMaxLoc(histogram, &min, &max, &min_loc, &max_loc);
 
     // calculate angle and displacement at that location
-    angle_displacement.x = max_loc.y*(M_PI/ANGLE_BINS); 
-    angle_displacement.y = max_loc.x/(DISPLACE_BINS); // TODO: FIX DISPLACMENT!!!
+    angle_displacement.x = ((max_loc.y - ANGLE_BINS/2)*M_PI)/ANGLE_BINS; 
+    angle_displacement.y = ((max_loc.x - DISPLACE_BINS/2)*ROAD_WIDTH)/DISPLACE_BINS; 
+
+    return angle_displacement;
+}
+
+
+
+/*
+   Function:
+      Finds the mean of a 2D histogram. Returns
+      a point with the angle and displacement of the mode.
+   Parameters:
+      Mat histogram - 2D histogram of angle and displacement
+   Returns:
+      Point2f - point containing angle and
+      displacement of mean.
+*/
+
+Point2f getHistogramMean(Mat histogram) {
+
+    Point2f angle_displacement;
+
+    // find 1st order moments
+    Moments mu = moments(histogram, false);
+    int mean_y = int(mu.m10/mu.m00);
+    int mean_x = int(mu.m01/mu.m00);
+
+    // calculate angle and displacement at that location
+    angle_displacement.x = ((mean_x - ANGLE_BINS/2)*M_PI)/ANGLE_BINS; 
+    angle_displacement.y = ((mean_y - DISPLACE_BINS/2)*ROAD_WIDTH)/DISPLACE_BINS;
 
     return angle_displacement;
 }

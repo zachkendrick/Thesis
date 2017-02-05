@@ -1,0 +1,8 @@
+prefix=/home/zach/thesis/install
+
+Name: pose_estimation
+Description: Description of pose_estimation
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/zach/thesis/install/lib 
+Requires: 

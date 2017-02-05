@@ -15,11 +15,15 @@ set(CMAKE_MAKEFILE_DEPENDS
   "catkin_generated/order_packages.cmake"
   "lane_detection/catkin_generated/ordered_paths.cmake"
   "lane_detection/catkin_generated/package.cmake"
+  "pose_estimation/catkin_generated/ordered_paths.cmake"
+  "pose_estimation/catkin_generated/package.cmake"
   "video_capture/catkin_generated/ordered_paths.cmake"
   "video_capture/catkin_generated/package.cmake"
   "/home/zach/thesis/src/CMakeLists.txt"
   "/home/zach/thesis/src/lane_detection/CMakeLists.txt"
   "/home/zach/thesis/src/lane_detection/package.xml"
+  "/home/zach/thesis/src/pose_estimation/CMakeLists.txt"
+  "/home/zach/thesis/src/pose_estimation/package.xml"
   "/home/zach/thesis/src/video_capture/CMakeLists.txt"
   "/home/zach/thesis/src/video_capture/package.xml"
   "/opt/ros/kinetic/share/catkin/cmake/../package.xml"
@@ -153,6 +157,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "gtest/CMakeFiles/CMakeDirectoryInformation.cmake"
   "lane_detection/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "pose_estimation/CMakeFiles/CMakeDirectoryInformation.cmake"
   "video_capture/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 

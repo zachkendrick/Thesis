@@ -122,8 +122,8 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     lane_lines_pub.publish(line_list_outer);
 
     // display window
-    imshow("view", frame);
-    imshow("center lane", centerMarkings);
+    // imshow("view", frame);
+    // imshow("center lane", centerMarkings);
     cv::waitKey(1);
   }
   catch (cv_bridge::Exception& e)
@@ -204,7 +204,7 @@ Mat centerLaneMarkings(Mat edges, Mat frame) {
 
   // convert to HSV, threshold, dilate, bitwise AND with original image
   cvtColor(frame, imHSV, CV_BGR2HSV);
-  imshow("HSV", imHSV);
+  // imshow("HSV", imHSV);
   inRange(imHSV, Scalar(20, 230, 100), Scalar(50, 255, 150), imLaneMarkingsMask);
   dilate(imLaneMarkingsMask, imDilate, Mat(), Point(-1,-1), 3);
   bitwise_and(edges, imDilate, imCenterMarkings);

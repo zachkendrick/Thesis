@@ -1,10 +1,6 @@
 # CMake generated Testfile for 
-# Source directory: /home/zach/thesis/src
-# Build directory: /home/zach/thesis/build
+# Source directory: /home/zach/thesis/src/pose_estimation
+# Build directory: /home/zach/thesis/build/pose_estimation
 # 
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
-subdirs(gtest)
-subdirs(lane_detection)
-subdirs(pose_estimation)
-subdirs(video_capture)

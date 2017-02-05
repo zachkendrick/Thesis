@@ -815,6 +815,24 @@ clean: lane_detection/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/clean
 .PHONY : clean
 
 #=============================================================================
+# Directory level rules for directory pose_estimation
+
+# Convenience name for "all" pass in the directory.
+pose_estimation/all:
+
+.PHONY : pose_estimation/all
+
+# Convenience name for "clean" pass in the directory.
+pose_estimation/clean:
+
+.PHONY : pose_estimation/clean
+
+# Convenience name for "preinstall" pass in the directory.
+pose_estimation/preinstall:
+
+.PHONY : pose_estimation/preinstall
+
+#=============================================================================
 # Directory level rules for directory video_capture
 
 # Convenience name for "all" pass in the directory.
