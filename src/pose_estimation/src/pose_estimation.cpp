@@ -36,8 +36,8 @@ using namespace ros;
 using namespace tf2;
 
 // number of bins in 2D histogram
-const static int ANGLE_BINS = 60; 
-const static int DISPLACE_BINS = 60;
+const static float ANGLE_BINS = 60.0; 
+const static float DISPLACE_BINS = 60.0;
 
 // the width of the road for horizontal displacement in rviz units
 const static float ROAD_WIDTH = 3.0;
@@ -65,8 +65,8 @@ Point2f getHistogramMean(Mat histogram);
       Pose with id=4
 */
 
-void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
-{
+void estimatePose(const visualization_msgs::MarkerConstPtr& msg) {
+    
     // histograms of lane markings
     Mat hist;
     Mat histDisplay;
@@ -75,10 +75,10 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
     hist = histogram2D(msg->points, msg->id);
 
     // find the mode (L-0 norm) of the histogram
-    Point2f angle_displacement = getHistogramMode(hist);
+    Point2f angle_displacement = getHistogramMode(hist); //Point2f(0,0);//
 
     // find the mean (L-1 norm) of the histogram
-    angle_displacement = getHistogramMean(hist);
+    // angle_displacement = getHistogramMean(hist);
 
     // publish car pose
     visualization_msgs::Marker car_pose;
@@ -96,28 +96,30 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg)
 
     // set the horizontal displacement of the car
     car_pose.pose.position.x = 0.0;
-    car_pose.pose.position.y = -angle_displacement.y;
+    car_pose.pose.position.y = angle_displacement.y; // negative
     car_pose.pose.position.z = 0.0;
 
     // set the angle of the car
+    cout << angle_displacement.x << endl;
     tf2::Quaternion quat;
-    quat.setRPY(0.0, 0.0,  M_PI + angle_displacement.x);
+    quat.setRPY(0.0, 0.0, angle_displacement.x);
     car_pose.pose.orientation.x = quat.x();
     car_pose.pose.orientation.y = quat.y();
     car_pose.pose.orientation.z = quat.z();
     car_pose.pose.orientation.w = quat.w();
 
     // set the dimensions of the arrow
-    car_pose.scale.x = 1.0;
-    car_pose.scale.y = 0.1;
-    car_pose.scale.z = 0.1;
+    car_pose.scale.x = 100.0;
+    car_pose.scale.y = 10.0;
+    car_pose.scale.z = 10.0;
 
     // publish the car pose
     pose_pub.publish(car_pose);
 
-    if(angle_displacement.x < 60 && angle_displacement.y < 60) {
-    hist.at<float>(angle_displacement.x, angle_displacement.y) = 0.5;
-    }
+
+    // if(angle_displacement.x < 60 && angle_displacement.y < 60) {
+    //     hist.at<float>(angle_displacement.x, angle_displacement.y) = 0.5;
+    // }
 
     // display histogram
     resize(hist, histDisplay, Size(300, 300), 0, 0, cv::INTER_NEAREST);
@@ -151,7 +153,8 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
     for(size_t i = 0; i < points.size(); i+=2) {
         angle = lineSegmentAngle(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
         displace = lineSegmentDisplacement(points[i].x, points[i].y, points[i+1].x, points[i+1].y, id);
-        hist.at<float>(angle , displace)++;
+        // hist.at<float>(angle , displace)++;
+        hist.at<float>(angle , 30)++;
     }
 
     return hist;
@@ -176,8 +179,10 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
 int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
 
     float angle = atan((p2y - p1y)/(p2x - p1x));
-    return int(((angle/M_PI)*ANGLE_BINS) + ANGLE_BINS/2);
-
+    cout << angle << endl;
+    int test = int((((angle/M_PI)+0.5)*ANGLE_BINS));
+    // cout << test << endl;
+    return test;
 }
 
 
@@ -215,6 +220,7 @@ int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const in
     else if(id == 3 && midpoint <= 0) {
         displacement = ROAD_WIDTH/2 - midpoint;
     }
+    // cout << displacement << endl;
 
     displacement = int(((displacement/ROAD_WIDTH)*DISPLACE_BINS) + DISPLACE_BINS/2);
 
@@ -244,8 +250,10 @@ Point2f getHistogramMode(Mat histogram) {
     minMaxLoc(histogram, &min, &max, &min_loc, &max_loc);
 
     // calculate angle and displacement at that location
-    angle_displacement.x = ((max_loc.y - ANGLE_BINS/2)*M_PI)/ANGLE_BINS; 
-    angle_displacement.y = ((max_loc.x - DISPLACE_BINS/2)*ROAD_WIDTH)/DISPLACE_BINS; 
+    // cout << max_loc.y << endl;
+    angle_displacement.x = ((max_loc.y/ANGLE_BINS)-0.5)*M_PI;   //((max_loc.y - ANGLE_BINS/2)*M_PI)/ANGLE_BINS;
+    // cout << angle_displacement.x << endl; 
+    angle_displacement.y = 0.0; //((max_loc.x - DISPLACE_BINS/2)*ROAD_WIDTH)/DISPLACE_BINS; 
 
     return angle_displacement;
 }

@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     VideoCapture cap("small_turn.mp4");
     if(!cap.isOpened()) 
         return -1;
-    Mat frame;
+    // Mat frame;
     sensor_msgs::ImagePtr msg;
 
     ros::Rate loop_rate(30);

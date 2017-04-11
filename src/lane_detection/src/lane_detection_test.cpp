@@ -47,11 +47,16 @@ const static float WHITE[4] = {1.0, 1.0, 1.0, 1.0};
 const int horizon = 180; 
 
 // homography matrix
-const Matx33f H(-1.27373e-05, -0.0002421778, -0.1970125,
-                 0.001029818, -1.578045e-05, -0.337324,
-                 -0.0001088811, -0.007584862, 1.0);
+// const Matx33f H(-1.27373e-05, -0.0002421778, -0.1970125,
+                 // 0.001029818, -1.578045e-05, -0.337324,
+                 // -0.0001088811, -0.007584862, 1.0);
+
+Matx33f H(500, -292.25848, 43838.77,
+ 0, 66.63887, 65004.168,
+ 0, -0.91330779, 636.99615);
 
 
+// const Matx33f H(1.136692e-05, -0.0002660425, -0.2579768, 0.001225021, -1.298795e-05, -0.391406, -0.0002660613, -0.008794414, 1);
 
 /*
    Function:
@@ -84,7 +89,7 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     line_list_inner.action = visualization_msgs::Marker::ADD;
     line_list_inner.id = 2;
     line_list_inner.type = visualization_msgs::Marker::LINE_LIST;
-    line_list_inner.scale.x = 0.01;
+    line_list_inner.scale.x = 2.0;//0.01;
 
     // publisher information of line list yellow lanes
     visualization_msgs::Marker line_list_outer;
@@ -93,7 +98,7 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     line_list_outer.action = visualization_msgs::Marker::ADD;
     line_list_outer.id = 3;
     line_list_outer.type = visualization_msgs::Marker::LINE_LIST;
-    line_list_outer.scale.x = 0.01;
+    line_list_outer.scale.x = 2.0;//0.01;
 
     // Uncomment to add radial undistortion
     // Mat_<float> cam(3,3); cam << 309.58086449, 0.0, 332.29985864,  0.0, 309.62831779, 240.61274041, 0.0, 0.0, 1.0;
@@ -106,6 +111,9 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     // optimalCam = getOptimalNewCameraMatrix(cam, dist, frame1.size(), 0);
     // undistort(frame1, frame, cam, dist, optimalCam);
     // imshow("test", frame);
+
+    // perspective transform
+    // warpPerspective(frame, destination, transfo, taille, INTER_CUBIC | WARP_INVERSE_MAP);
 
     // find the center lane markings and outter lane markings
     frame = frame(Rect(0, horizon, frame.size().width, frame.size().height-horizon));
@@ -122,8 +130,8 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     lane_lines_pub.publish(line_list_outer);
 
     // display window
-    // imshow("view", frame);
-    // imshow("center lane", centerMarkings);
+    imshow("view", frame);
+    imshow("center lane", centerMarkings);
     cv::waitKey(1);
   }
   catch (cv_bridge::Exception& e)
@@ -227,6 +235,55 @@ Mat centerLaneMarkings(Mat edges, Mat frame) {
       The visualization_msgs with the ground projected line segments
 */
 
+// visualization_msgs::Marker groundProjection(vector<Vec4i> lines, visualization_msgs::Marker line_list, const float color[]) {
+  
+//   // Line list is red
+//   line_list.color.r = color[0];
+//   line_list.color.g = color[1];
+//   line_list.color.b = color[2];
+//   line_list.color.a = color[3];
+
+//   for(size_t i = 0; i < lines.size(); i++)
+//   {
+//     Vec4i l = lines[i];
+//     Matx31f P1(l[0], l[1], 1.0);
+//     Matx31f P2(l[2], l[3], 1.0);
+
+//     cv::Mat gndPoint1 = Mat(H * P1);
+//     cv::Mat gndPoint2 = Mat(H * P2);
+
+//     geometry_msgs::Point p1;
+//     geometry_msgs::Point p2;
+
+//     // note the flip in axis
+//     p1.z = 0.0;
+//     p1.y = -gndPoint1.at<float>(1)/gndPoint1.at<float>(0);
+//     p1.x = gndPoint1.at<float>(2)/gndPoint1.at<float>(0);
+//     p2.z = 0.0;
+//     p2.y = -gndPoint2.at<float>(1)/gndPoint2.at<float>(0);
+//     p2.x = gndPoint2.at<float>(2)/gndPoint2.at<float>(0);
+
+//     // uncomment for straight lines and comment above lines (set z = 6.0 line 243-44)
+//     // p1.x = gndPoint1.at<float>(2)/gndPoint1.at<float>(0)+2.645;
+//     // p1.y = -(gndPoint1.at<float>(1)*(gndPoint1.at<float>(2)*0.15)/gndPoint1.at<float>(0))+0.485;
+//     // p1.z = 0.0;
+//     // p2.x = gndPoint2.at<float>(2)/gndPoint2.at<float>(0)+2.645;
+//     // p2.y = -(gndPoint2.at<float>(1)*(gndPoint2.at<float>(2)*0.15)/gndPoint2.at<float>(0))+0.485;
+//     // p2.z = 0.0;
+
+    
+//     // The line list needs two points for each line
+//     line_list.points.push_back(p1);
+//     line_list.points.push_back(p2);
+//   }
+
+//   return line_list;
+// }
+
+
+
+
+
 visualization_msgs::Marker groundProjection(vector<Vec4i> lines, visualization_msgs::Marker line_list, const float color[]) {
   
   // Line list is red
@@ -237,36 +294,29 @@ visualization_msgs::Marker groundProjection(vector<Vec4i> lines, visualization_m
 
   for(size_t i = 0; i < lines.size(); i++)
   {
+    vector<Point2f> dstPoints;
+    vector<Point2f> srcPoints;
     Vec4i l = lines[i];
-    Matx31f P1(l[0], l[1], 1.0);
-    Matx31f P2(l[2], l[3], 1.0);
+    srcPoints.push_back(Point2f(l[0], l[1]));
+    srcPoints.push_back(Point2f(l[2], l[3]));
 
-    cv::Mat gndPoint1 = Mat(H * P1);
-    cv::Mat gndPoint2 = Mat(H * P2);
+    perspectiveTransform(srcPoints, dstPoints,H.inv());
 
     geometry_msgs::Point p1;
     geometry_msgs::Point p2;
 
     // note the flip in axis
     p1.z = 0.0;
-    p1.y = -gndPoint1.at<float>(1)/gndPoint1.at<float>(0);
-    p1.x = gndPoint1.at<float>(2)/gndPoint1.at<float>(0);
+    p1.y = -dstPoints[0].y;
+    p1.x = -dstPoints[0].x;
     p2.z = 0.0;
-    p2.y = -gndPoint2.at<float>(1)/gndPoint2.at<float>(0);
-    p2.x = gndPoint2.at<float>(2)/gndPoint2.at<float>(0);
-
-    // uncomment for straight lines and comment above lines (set z = 6.0 line 243-44)
-    // p1.x = gndPoint1.at<float>(2)/gndPoint1.at<float>(0)+2.645;
-    // p1.y = -(gndPoint1.at<float>(1)*(gndPoint1.at<float>(2)*0.15)/gndPoint1.at<float>(0))+0.485;
-    // p1.z = 0.0;
-    // p2.x = gndPoint2.at<float>(2)/gndPoint2.at<float>(0)+2.645;
-    // p2.y = -(gndPoint2.at<float>(1)*(gndPoint2.at<float>(2)*0.15)/gndPoint2.at<float>(0))+0.485;
-    // p2.z = 0.0;
-
+    p2.y = -dstPoints[1].y;
+    p2.x = -dstPoints[1].x;
     
     // The line list needs two points for each line
     line_list.points.push_back(p1);
     line_list.points.push_back(p2);
+    cout << "hello" << endl;
   }
 
   return line_list;
