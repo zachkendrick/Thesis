@@ -29,6 +29,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <math.h>
+#include <queue> 
 
 using namespace cv;
 using namespace std;
@@ -39,18 +40,38 @@ using namespace tf2;
 const static float ANGLE_BINS = 60.0; 
 const static float DISPLACE_BINS = 60.0;
 
+// ideal position of the car
+const static float CENTER_X = 315;
+const static float CENTER_Y = -340;
+
+// ideal position of road lanes
+const static float CENTER_LINE = 130;
+const static float RIGHT_LINE = 530;
+
 // the width of the road for horizontal displacement in rviz units
-const static float ROAD_WIDTH = 3.0;
+const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE;
+
+// moving average window size
+const static int AVG_WINDOW = 10;
 
 // car pose publisher
 ros::Publisher pose_pub;
+
+// moving average queue
+queue<float> displace_avg;
+
+// previous pose estimate
+Point2f prev_state;
 
 // functions
 Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > points, const int id);
 int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y);
 int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const int id);
+float angleWeight(float p1x, float p1y, float p2x, float p2y);
+float movingAverage(float displace_bin);
 Point2f getHistogramMode(Mat histogram);
 Point2f getHistogramMean(Mat histogram);
+
 
 
 
@@ -75,10 +96,13 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg) {
     hist = histogram2D(msg->points, msg->id);
 
     // find the mode (L-0 norm) of the histogram
-    Point2f angle_displacement = getHistogramMode(hist); //Point2f(0,0);//
+    // Point2f angle_displacement = getHistogramMode(hist); //Point2f(0,0);
 
     // find the mean (L-1 norm) of the histogram
-    // angle_displacement = getHistogramMean(hist);
+    Point2f angle_displacement = getHistogramMean(hist);
+    // cout << angle_displacement.y << endl;
+    angle_displacement.y = movingAverage(angle_displacement.y);
+
 
     // publish car pose
     visualization_msgs::Marker car_pose;
@@ -95,12 +119,12 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg) {
     car_pose.color.a = 1.0;
 
     // set the horizontal displacement of the car
-    car_pose.pose.position.x = 0.0;
-    car_pose.pose.position.y = angle_displacement.y; // negative
+    car_pose.pose.position.x = angle_displacement.y;
+    car_pose.pose.position.y = CENTER_Y; // negative
     car_pose.pose.position.z = 0.0;
 
     // set the angle of the car
-    cout << angle_displacement.x << endl;
+    // cout << angle_displacement.x << endl;
     tf2::Quaternion quat;
     quat.setRPY(0.0, 0.0, angle_displacement.x);
     car_pose.pose.orientation.x = quat.x();
@@ -115,11 +139,6 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg) {
 
     // publish the car pose
     pose_pub.publish(car_pose);
-
-
-    // if(angle_displacement.x < 60 && angle_displacement.y < 60) {
-    //     hist.at<float>(angle_displacement.x, angle_displacement.y) = 0.5;
-    // }
 
     // display histogram
     resize(hist, histDisplay, Size(300, 300), 0, 0, cv::INTER_NEAREST);
@@ -146,20 +165,60 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
     Mat hist = Mat(ANGLE_BINS, DISPLACE_BINS, CV_32F, double(0));
 
     // angle and displacement values
-    float angle = 0.0;
-    float displace = 0.0;
+    float angle_bin = 0.0;
+    float displace_bin = 0.0;
+    float weight = 0.0;
 
     // compute angle and displacement of line segments
     for(size_t i = 0; i < points.size(); i+=2) {
-        angle = lineSegmentAngle(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
-        displace = lineSegmentDisplacement(points[i].x, points[i].y, points[i+1].x, points[i+1].y, id);
-        // hist.at<float>(angle , displace)++;
-        hist.at<float>(angle , 30)++;
+        angle_bin = lineSegmentAngle(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
+        displace_bin = lineSegmentDisplacement(points[i].x, points[i].y, points[i+1].x, points[i+1].y, id);
+        weight = angleWeight(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
+        if(displace_bin == -1) {continue;}
+        // if(abs(weight) > 80000) {cout << displace_bin << angle_bin << endl;}
+        hist.at<float>(angle_bin, displace_bin) += weight;
     }
 
     return hist;
 }
 
+float movingAverage(float disp_val) {
+    if(displace_avg.size() == AVG_WINDOW) {
+        displace_avg.pop();
+    }
+    displace_avg.push(disp_val);
+
+    float sum = 0;
+    for(int i = 0; i < AVG_WINDOW; i++) {
+        float tmp = displace_avg.front();
+        displace_avg.pop();
+        sum += tmp;
+        displace_avg.push(tmp);
+    }
+    return sum/AVG_WINDOW;
+}
+
+
+float angleWeight(float p1x, float p1y, float p2x, float p2y) {
+
+    float midPointX = (p1x + p2x)/2;
+    float midPointY = (p1y + p2y)/2;
+    float x = abs((CENTER_X - midPointX)/1000);
+    float y = abs((CENTER_Y - midPointY)/1000);
+
+    // euclidean distance
+    // float dist = pow(x, 2) + pow(y, 2);
+    float dist = x + pow(y, 10);
+
+    // cost function
+    float weight = exp(-dist);
+
+    // cout << "distance: " << dist << endl;
+    // cout << "weight: " << weight << endl;
+
+    if(dist < 0.45) return weight;
+    else return 0.0;              
+}
 
 
 /*
@@ -179,10 +238,19 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
 int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
 
     float angle = atan((p2y - p1y)/(p2x - p1x));
-    cout << angle << endl;
-    int test = int((((angle/M_PI)+0.5)*ANGLE_BINS));
-    // cout << test << endl;
-    return test;
+    if(abs(p2x - p1x) < 1) {
+    // cout << p2x - p1x << endl;
+    }
+    // cout << angle << endl;
+    // map negative angle to turn to the left
+    if(angle < 0) {angle = angle+(M_PI);}
+    int angle_bin = int((angle/M_PI)*ANGLE_BINS);
+
+    // check bounds
+    if(angle_bin >= ANGLE_BINS) angle_bin = ANGLE_BINS-1;
+    else if (angle_bin < 0) angle_bin = 0;
+
+    return angle_bin;
 }
 
 
@@ -206,24 +274,34 @@ int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
 int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const int id) {
 
     // find the midpoint of the line segment along the horizontal displacement
-    float midpoint = (p1y + p2y)/2;
+    float midPoint = (p1x + p2x)/2;
 
     // resulting displacment from center of the road
-    float displacement = 0.0;
+    float displacement = -1;
 
-    // white lanes
-    if(id == 2 && midpoint >= 0) {
-        displacement = -ROAD_WIDTH/2 + midpoint;
+    // exclude lines far away from the camera
+    if((p1y + p2y)/2 > 0) {return displacement;}
+
+    // right white lanes
+    if(id == 3 && midPoint > CENTER_X) {
+        displacement = (ROAD_WIDTH/2) - abs(CENTER_X - midPoint);
     }
-
     // yellow lanes
-    else if(id == 3 && midpoint <= 0) {
-        displacement = ROAD_WIDTH/2 - midpoint;
+    else if(id == 2 && midPoint < CENTER_X && midPoint > 0) {
+        displacement = -((ROAD_WIDTH/2) - abs(CENTER_X - midPoint));
     }
+    // bad lane line detections should be ignored
+    else {
+        return displacement;
+    }
+
+    // cout << ((displacement/(ROAD_WIDTH/2))+0.5) << endl;
+    displacement = int(((displacement/(ROAD_WIDTH/2))+0.5)*DISPLACE_BINS);
+    
+    // displacement bins bound check
+    if(displacement >= DISPLACE_BINS) displacement = DISPLACE_BINS-1;
+    else if(displacement < 0) displacement = 0;
     // cout << displacement << endl;
-
-    displacement = int(((displacement/ROAD_WIDTH)*DISPLACE_BINS) + DISPLACE_BINS/2);
-
     return displacement; 
 }
 
@@ -251,9 +329,9 @@ Point2f getHistogramMode(Mat histogram) {
 
     // calculate angle and displacement at that location
     // cout << max_loc.y << endl;
-    angle_displacement.x = ((max_loc.y/ANGLE_BINS)-0.5)*M_PI;   //((max_loc.y - ANGLE_BINS/2)*M_PI)/ANGLE_BINS;
-    // cout << angle_displacement.x << endl; 
-    angle_displacement.y = 0.0; //((max_loc.x - DISPLACE_BINS/2)*ROAD_WIDTH)/DISPLACE_BINS; 
+    angle_displacement.x = (max_loc.y/ANGLE_BINS)*M_PI;
+    // cout << max_loc.x << endl; 
+    angle_displacement.y = CENTER_X + (((max_loc.x/DISPLACE_BINS) - 0.5)*(ROAD_WIDTH/2)); 
 
     return angle_displacement;
 }
@@ -277,13 +355,21 @@ Point2f getHistogramMean(Mat histogram) {
 
     // find 1st order moments
     Moments mu = moments(histogram, false);
+
+    if(mu.m00 == 0) {
+        angle_displacement = prev_state;
+        return angle_displacement;
+    }
+
     int mean_y = int(mu.m10/mu.m00);
     int mean_x = int(mu.m01/mu.m00);
 
     // calculate angle and displacement at that location
-    angle_displacement.x = ((mean_x - ANGLE_BINS/2)*M_PI)/ANGLE_BINS; 
-    angle_displacement.y = ((mean_y - DISPLACE_BINS/2)*ROAD_WIDTH)/DISPLACE_BINS;
+    angle_displacement.x = (mean_x/ANGLE_BINS)*M_PI;
+    angle_displacement.y = CENTER_X + (((mean_y/DISPLACE_BINS) - 0.5)*(ROAD_WIDTH/2));
 
+    prev_state = angle_displacement;
+    
     return angle_displacement;
 }
 

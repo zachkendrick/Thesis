@@ -51,11 +51,13 @@ const int horizon = 180;
                  // 0.001029818, -1.578045e-05, -0.337324,
                  // -0.0001088811, -0.007584862, 1.0);
 
-Matx33f H(500, -292.25848, 43838.77,
- 0, 66.63887, 65004.168,
- 0, -0.91330779, 636.99615);
+// Matx33f H(500, -292.25848, 43838.77,
+//  0, 66.63887, 65004.168,
+//  0, -0.91330779, 636.99615);
 
-
+Matx33f H(500, -287.53461, 43130.195,
+ 0, 84.658173, 62301.273,
+ 0, -0.89854568, 634.78186);
 // const Matx33f H(1.136692e-05, -0.0002660425, -0.2579768, 0.001225021, -1.298795e-05, -0.391406, -0.0002660613, -0.008794414, 1);
 
 /*
@@ -308,15 +310,14 @@ visualization_msgs::Marker groundProjection(vector<Vec4i> lines, visualization_m
     // note the flip in axis
     p1.z = 0.0;
     p1.y = -dstPoints[0].y;
-    p1.x = -dstPoints[0].x;
+    p1.x = dstPoints[0].x;
     p2.z = 0.0;
     p2.y = -dstPoints[1].y;
-    p2.x = -dstPoints[1].x;
+    p2.x = dstPoints[1].x;
     
     // The line list needs two points for each line
     line_list.points.push_back(p1);
     line_list.points.push_back(p2);
-    cout << "hello" << endl;
   }
 
   return line_list;
