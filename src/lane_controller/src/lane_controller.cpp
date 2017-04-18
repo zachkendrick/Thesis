@@ -30,14 +30,32 @@ using namespace cv;
 using namespace std;
 using namespace ros;
 
-
 // PID coefficients
-const static float K_P = 0.0;
+const static float K_P = 10;
 const static float K_I = 0.0;
 const static float K_D = 0.0;
 
+// max/min PWM values for left/right motors
+const static int LEFT_MOTOR_MIN_PWM = 61;
+const static int LEFT_MOTOR_MAX_PWM = 255;
+const static int RIGHT_MOTOR_MIN_PWM = 61;
+const static int RIGHT_MOTOR_MAX_PWM = 255;
+
+// the ideal pwm for driving straight
+const static int STEADY_PWM = (LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
+
+// ideal position of the car
+const static float CENTER_X = 315;
+
+// ideal position of road lanes
+const static float CENTER_LINE = 130;
+const static float RIGHT_LINE = 530;
+
+// the width of the road for horizontal displacement in rviz units
+const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE;
+
 // past time and error
-float last_disp_err = 0.0;
+float prev_error = 0.0;
 long past_time;
 float err_I;
 
@@ -61,10 +79,15 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
 
     // get the error in the angle of the pose
     tf2::Quaternion quat(msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w);
-    float angle_err = quat.getAngle() - M_PI;
+    
+    // angle error normalized between -1 to 1
+    float angle_err = ((M_PI/2) - quat.getAngle())/(M_PI/2);
 
-    // get the error in the displacement of the pose
-    float disp_err = msg->pose.position.y;
+    // displacement error normalized between -1 to 1
+    float disp_err = (msg->pose.position.x - CENTER_X)/(ROAD_WIDTH/2);
+
+    // take a weighted sum of the angle and displacement error
+    float error = -disp_err + angle_err;
 
     // calculate time ellapsed
     timeval time;
@@ -73,22 +96,21 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
     float dt = (float)(present_time - past_time);
 
     // calculate I and D error
-    err_I += (disp_err * dt);
-    float err_D = (disp_err - last_disp_err)/dt;
+    err_I += (error * dt);
+    float err_D = (error - prev_error)/dt;
 
     // compute PID output
-    float output = K_P*disp_err + K_I*err_I + K_D*err_D;
+    float output = K_P*error + K_I*err_I + K_D*err_D;
 
     /*Remember some variables for next time*/
-    last_disp_err = disp_err;
+    prev_error = error;
     past_time = present_time;
 
-    cout << "HELLO" << endl;
     // publish the PWMs from the PID output
     std_msgs::Float64MultiArray motor_pwm;
-    motor_pwm.data.push_back(0.3);//left_motor_pwm;
-    motor_pwm.data.push_back(0.7);//right_motor_pwm;
-    cout << motor_pwm << endl;
+    motor_pwm.data.push_back(STEADY_PWM+output);//left_motor_pwm;
+    motor_pwm.data.push_back(STEADY_PWM-output);//right_motor_pwm;
+    // cout << motor_pwm << endl;
     pwm_pub.publish(motor_pwm);
 
 }
@@ -98,8 +120,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "lane_controller");
     ros::NodeHandle nh;
-    // cv::namedWindow("histogram");
-    // cv::startWindowThread();
+    cv::namedWindow("histogram");
+    cv::startWindowThread();
 
     // intialize the past time
     timeval t;
