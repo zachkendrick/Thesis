@@ -33,16 +33,16 @@ using namespace ros;
 // PID coefficients
 const static float K_P = 120;
 const static float K_I = 0;
-const static float K_D = 30;
+const static float K_D = 40;
 
 // max/min PWM values for left/right motors
-const static int LEFT_MOTOR_MIN_PWM = 80;
-const static int LEFT_MOTOR_MAX_PWM = 210; //255;
+const static int LEFT_MOTOR_MIN_PWM = 80; //80
+const static int LEFT_MOTOR_MAX_PWM = 210; //210;
 const static int RIGHT_MOTOR_MIN_PWM = 80;
-const static int RIGHT_MOTOR_MAX_PWM = 210; //255;
+const static int RIGHT_MOTOR_MAX_PWM = 210; //210;
 
 // the ideal pwm for driving straight
-const static int STEADY_PWM = 70+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
+const static int STEADY_PWM = 40+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
 
 // ideal position of the car
 const static float CENTER_X = 315;
@@ -56,7 +56,7 @@ const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE;
 
 // past time and error
 float prev_error = 0.0;
-long past_time;
+long long past_time;
 float err_I;
 
 // car pose publisher
@@ -92,11 +92,17 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
     // calculate time ellapsed
     timeval time;
     gettimeofday(&time, NULL);
-    long present_time = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-    float dt = (float)(present_time - past_time);
+    long long present_time = (((long long) time.tv_sec) * 1000LL) + (((long long)time.tv_usec) / 1000LL);
+    float dt = 400;//(float)(present_time - past_time);
 
     // calculate I and D error
     err_I += (error * dt);
+    //cout << time.tv_usec << endl;
+    //cout << time.tv_sec << endl;
+    //cout << sizeof(time.tv_sec) << endl;
+    //cout << dt << endl;
+    //cout << present_time << endl;
+    //cout << "----------" << endl;
     float err_D = (error - prev_error)/dt;
 
     // compute PID output
@@ -126,7 +132,7 @@ int main(int argc, char **argv)
     // intialize the past time
     timeval t;
     gettimeofday(&t, NULL);
-    past_time = (t.tv_sec * 1000) + (t.tv_usec / 1000);
+    past_time = (((long long) t.tv_sec) * 1000LL) + (((long long)t.tv_usec) / 1000LL);
 
     // subscribe to the "raw_image" topic
     ros::Subscriber pose_sub = nh.subscribe("pose_estimate", 1, PID);

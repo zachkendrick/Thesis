@@ -126,7 +126,7 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg) {
     // set the angle of the car
     // cout << angle_displacement.x << endl;
     tf2::Quaternion quat;
-    quat.setRPY(0.0, 0.0, angle_displacement.x);
+    quat.setRPY(0.0, 0.0, angle_displacement.x+M_PI/20.0);
     car_pose.pose.orientation.x = quat.x();
     car_pose.pose.orientation.y = quat.y();
     car_pose.pose.orientation.z = quat.z();

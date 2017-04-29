@@ -81,8 +81,8 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
   try
   {
     Mat frame;
-    Mat frame_undistort; // added
-    Mat mask_undistort; // added
+    // Mat frame_undistort; // added
+    //Mat mask_undistort; // added
     Mat edges; 
     Mat centerMarkings;
     Mat outerMarkings;
@@ -111,17 +111,17 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     // Uncomment to add radial undistortion
     Mat_<float> cam(3,3); cam << 309.58086449, 0.0, 332.29985864,  0.0, 309.62831779, 240.61274041, 0.0, 0.0, 1.0;
     Mat_<float> dist(1,5); dist << -3.52082519e-01, 1.59330550e-01, 4.93449598e-04, -1.77065551e-04, 0.0;
-    Mat white = 255*Mat::ones(frame.size().height, frame.size().width, CV_8U);
+    //Mat white = 255*Mat::ones(frame.size().height, frame.size().width, CV_8U);
     //imshow("mask", white);
     
     // Mat frame;
-    Mat optimalCam;
-    optimalCam = getOptimalNewCameraMatrix(cam, dist, frame.size(), 0);
-    undistort(frame, frame_undistort, cam, dist, optimalCam);
-    undistort(white, mask_undistort, cam, dist, optimalCam);
-    frame = frame_undistort;
+    //Mat optimalCam;
+    //optimalCam = getOptimalNewCameraMatrix(cam, dist, frame.size(), 0);
+    //undistort(frame, frame_undistort, cam, dist, optimalCam);
+    //undistort(white, mask_undistort, cam, dist, optimalCam);
+    //frame = frame_undistort;
     
-    erode(mask_undistort, mask_undistort, Mat(), Point(-1,-1), 2);
+    //erode(mask_undistort, mask_undistort, Mat(), Point(-1,-1), 2);
     //imshow("test", frame);
     //imshow("mask", mask_undistort);
 
@@ -130,9 +130,9 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
 
     // find the center lane markings and outter lane markings
     frame = frame(Rect(0, horizon, frame.size().width, frame.size().height-horizon));
-    mask_undistort = mask_undistort(Rect(0, horizon, mask_undistort.size().width, mask_undistort.size().height-horizon));
+    //mask_undistort = mask_undistort(Rect(0, horizon, mask_undistort.size().width, mask_undistort.size().height-horizon));
     edges = cannyEdge(frame);
-    bitwise_and(edges, mask_undistort, edges);
+    //bitwise_and(edges, mask_undistort, edges);
     centerMarkings = centerLaneMarkings(edges, frame);
     bitwise_xor(centerMarkings, edges, outerMarkings);
     vector<Vec4i> lines_inner = houghTransform(centerMarkings, frame, Scalar(0,0,255));
