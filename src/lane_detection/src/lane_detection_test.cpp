@@ -44,7 +44,7 @@ const static float YELLOW[4] = {1.0, 1.0, 0.0, 1.0};
 const static float WHITE[4] = {1.0, 1.0, 1.0, 1.0};
 
 // the pixel height of the horizon in the scene
-const int horizon = 180; 
+const int horizon = 220; 
 
 // homography matrix
 // const Matx33f H(-1.27373e-05, -0.0002421778, -0.1970125,
@@ -54,7 +54,11 @@ const int horizon = 180;
 // Matx33f H(500, -292.25848, 43838.77,
 //  0, 66.63887, 65004.168,
 //  0, -0.91330779, 636.99615);
+//Matx33f H(500, -289.94067, 43491.094,
+//	  0, 75.660027, 63650.992,
+//	  0, -0.90606457, 635.90967);
 
+// 26
 Matx33f H(500, -287.53461, 43130.195,
  0, 84.658173, 62301.273,
  0, -0.89854568, 634.78186);
@@ -77,6 +81,8 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
   try
   {
     Mat frame;
+    Mat frame_undistort; // added
+    Mat mask_undistort; // added
     Mat edges; 
     Mat centerMarkings;
     Mat outerMarkings;
@@ -91,7 +97,7 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     line_list_inner.action = visualization_msgs::Marker::ADD;
     line_list_inner.id = 2;
     line_list_inner.type = visualization_msgs::Marker::LINE_LIST;
-    line_list_inner.scale.x = 2.0;//0.01;
+    line_list_inner.scale.x = 5.0;//0.01;
 
     // publisher information of line list yellow lanes
     visualization_msgs::Marker line_list_outer;
@@ -100,26 +106,33 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     line_list_outer.action = visualization_msgs::Marker::ADD;
     line_list_outer.id = 3;
     line_list_outer.type = visualization_msgs::Marker::LINE_LIST;
-    line_list_outer.scale.x = 2.0;//0.01;
+    line_list_outer.scale.x = 5.0;//0.01;
 
     // Uncomment to add radial undistortion
-    // Mat_<float> cam(3,3); cam << 309.58086449, 0.0, 332.29985864,  0.0, 309.62831779, 240.61274041, 0.0, 0.0, 1.0;
-    // Mat_<float> dist(1,5); dist << -3.52082519e-01, 1.59330550e-01, 4.93449598e-04, -1.77065551e-04, 0.0;
-
+    Mat_<float> cam(3,3); cam << 309.58086449, 0.0, 332.29985864,  0.0, 309.62831779, 240.61274041, 0.0, 0.0, 1.0;
+    Mat_<float> dist(1,5); dist << -3.52082519e-01, 1.59330550e-01, 4.93449598e-04, -1.77065551e-04, 0.0;
+    Mat white = 255*Mat::ones(frame.size().height, frame.size().width, CV_8U);
+    //imshow("mask", white);
+    
     // Mat frame;
-    // Mat optimalCam;
-    // cout << frame1.size().width << endl;
-    // cout << frame1.size().height << endl;
-    // optimalCam = getOptimalNewCameraMatrix(cam, dist, frame1.size(), 0);
-    // undistort(frame1, frame, cam, dist, optimalCam);
-    // imshow("test", frame);
+    Mat optimalCam;
+    optimalCam = getOptimalNewCameraMatrix(cam, dist, frame.size(), 0);
+    undistort(frame, frame_undistort, cam, dist, optimalCam);
+    undistort(white, mask_undistort, cam, dist, optimalCam);
+    frame = frame_undistort;
+    
+    erode(mask_undistort, mask_undistort, Mat(), Point(-1,-1), 2);
+    //imshow("test", frame);
+    //imshow("mask", mask_undistort);
 
     // perspective transform
     // warpPerspective(frame, destination, transfo, taille, INTER_CUBIC | WARP_INVERSE_MAP);
 
     // find the center lane markings and outter lane markings
     frame = frame(Rect(0, horizon, frame.size().width, frame.size().height-horizon));
+    mask_undistort = mask_undistort(Rect(0, horizon, mask_undistort.size().width, mask_undistort.size().height-horizon));
     edges = cannyEdge(frame);
+    bitwise_and(edges, mask_undistort, edges);
     centerMarkings = centerLaneMarkings(edges, frame);
     bitwise_xor(centerMarkings, edges, outerMarkings);
     vector<Vec4i> lines_inner = houghTransform(centerMarkings, frame, Scalar(0,0,255));
@@ -132,8 +145,8 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
     lane_lines_pub.publish(line_list_outer);
 
     // display window
-    imshow("view", frame);
-    imshow("center lane", centerMarkings);
+    // imshow("view", frame);
+    // imshow("center lane", centerMarkings);
     cv::waitKey(1);
   }
   catch (cv_bridge::Exception& e)
@@ -161,7 +174,7 @@ Mat cannyEdge(Mat frame) {
   // convert to grey scale, blur, canny edge
   cvtColor(frame, edges, COLOR_BGR2GRAY);
   GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
-  Canny(edges, edges, 10, 30, 3);
+  Canny(edges, edges, 100, 150, 3); // 10, 30
 
   return edges;
 }
@@ -215,7 +228,7 @@ Mat centerLaneMarkings(Mat edges, Mat frame) {
   // convert to HSV, threshold, dilate, bitwise AND with original image
   cvtColor(frame, imHSV, CV_BGR2HSV);
   // imshow("HSV", imHSV);
-  inRange(imHSV, Scalar(20, 230, 100), Scalar(50, 255, 150), imLaneMarkingsMask);
+  inRange(imHSV, Scalar(10, 100, 100), Scalar(65, 255, 200), imLaneMarkingsMask);
   dilate(imLaneMarkingsMask, imDilate, Mat(), Point(-1,-1), 3);
   bitwise_and(edges, imDilate, imCenterMarkings);
 
@@ -330,8 +343,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "lane_detection");
   ros::NodeHandle nh;
-  cv::namedWindow("view");
-  cv::startWindowThread();
+  //cv::namedWindow("view");
+  //cv::startWindowThread();
   image_transport::ImageTransport it(nh);
 
   // subscribe to the "raw_image" topic
@@ -341,6 +354,6 @@ int main(int argc, char **argv)
   lane_lines_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 1);
   ros::Rate r(30);
   ros::spin();
-  cv::destroyWindow("view");
+  //cv::destroyWindow("view");
 }
 

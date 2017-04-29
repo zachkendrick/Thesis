@@ -32,11 +32,10 @@ int main(int argc, char** argv)
     image_transport::Publisher raw_image_pub = it.advertise("raw_image", 1);
 
     // change camera input
-    //VideoCapture cap("small_turn.mp4");
-    VideoCapture cap(0);
+    VideoCapture cap("small_turn.mp4");
     if(!cap.isOpened()) 
         return -1;
-    // Mat frame;
+    Mat frame;
     sensor_msgs::ImagePtr msg;
 
     ros::Rate loop_rate(30);

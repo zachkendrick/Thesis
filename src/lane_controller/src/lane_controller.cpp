@@ -31,18 +31,18 @@ using namespace std;
 using namespace ros;
 
 // PID coefficients
-const static float K_P = 10;
-const static float K_I = 0.0;
-const static float K_D = 0.0;
+const static float K_P = 120;
+const static float K_I = 0;
+const static float K_D = 30;
 
 // max/min PWM values for left/right motors
-const static int LEFT_MOTOR_MIN_PWM = 61;
-const static int LEFT_MOTOR_MAX_PWM = 255;
-const static int RIGHT_MOTOR_MIN_PWM = 61;
-const static int RIGHT_MOTOR_MAX_PWM = 255;
+const static int LEFT_MOTOR_MIN_PWM = 80;
+const static int LEFT_MOTOR_MAX_PWM = 210; //255;
+const static int RIGHT_MOTOR_MIN_PWM = 80;
+const static int RIGHT_MOTOR_MAX_PWM = 210; //255;
 
 // the ideal pwm for driving straight
-const static int STEADY_PWM = (LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
+const static int STEADY_PWM = 70+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
 
 // ideal position of the car
 const static float CENTER_X = 315;
@@ -87,7 +87,7 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
     float disp_err = (msg->pose.position.x - CENTER_X)/(ROAD_WIDTH/2);
 
     // take a weighted sum of the angle and displacement error
-    float error = -disp_err + angle_err;
+    float error = -0.8*disp_err + angle_err;
 
     // calculate time ellapsed
     timeval time;
@@ -120,8 +120,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "lane_controller");
     ros::NodeHandle nh;
-    cv::namedWindow("histogram");
-    cv::startWindowThread();
+    //cv::namedWindow("histogram");
+    //cv::startWindowThread();
 
     // intialize the past time
     timeval t;
@@ -136,5 +136,5 @@ int main(int argc, char **argv)
 
     ros::Rate r(30);
     ros::spin();
-    cv::destroyWindow("histogram");
+    //cv::destroyWindow("histogram");
 }

@@ -141,8 +141,8 @@ void estimatePose(const visualization_msgs::MarkerConstPtr& msg) {
     pose_pub.publish(car_pose);
 
     // display histogram
-    resize(hist, histDisplay, Size(300, 300), 0, 0, cv::INTER_NEAREST);
-    imshow("histogram", histDisplay);
+    //resize(hist, histDisplay, Size(300, 300), 0, 0, cv::INTER_NEAREST);
+    //imshow("histogram", histDisplay);
     cv::waitKey(1);
 }
 
@@ -208,7 +208,7 @@ float angleWeight(float p1x, float p1y, float p2x, float p2y) {
 
     // euclidean distance
     // float dist = pow(x, 2) + pow(y, 2);
-    float dist = x + pow(y, 10);
+    float dist = x + pow(y, 2); //10
 
     // cost function
     float weight = exp(-dist);
@@ -379,8 +379,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "pose_estimation");
     ros::NodeHandle nh;
-    cv::namedWindow("histogram");
-    cv::startWindowThread();
+    //cv::namedWindow("histogram");
+    //cv::startWindowThread();
 
     // subscribe to the "raw_image" topic
     ros::Subscriber pose_sub = nh.subscribe("visualization_marker", 1, estimatePose);
@@ -389,5 +389,5 @@ int main(int argc, char **argv)
     pose_pub = nh.advertise<visualization_msgs::Marker>("pose_estimate", 1);
     ros::Rate r(30);
     ros::spin();
-    cv::destroyWindow("histogram");
+    //cv::destroyWindow("histogram");
 }
