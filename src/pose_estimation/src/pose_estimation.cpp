@@ -44,12 +44,15 @@ const static float DISPLACE_BINS = 60.0;
 const static float CENTER_X = 315;
 const static float CENTER_Y = -340;
 
+// ideal position of the body of the car (around axels)
+const static float BODY_Y = CENTER_Y - 400;
+
 // ideal position of road lanes
 const static float CENTER_LINE = 130;
 const static float RIGHT_LINE = 530;
 
 // the width of the road for horizontal displacement in rviz units
-const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE;
+const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE; //2*sqrt(pow((RIGHT_LINE - CENTER_LINE)/2, 2) + pow(BODY_Y - CENTER_Y, 2));;
 
 // moving average window size
 const static int AVG_WINDOW = 10;
@@ -63,6 +66,16 @@ queue<float> displace_avg;
 // previous pose estimate
 Point2f prev_state;
 
+// struct Point {
+//     float x;
+//     float y;
+// }
+
+struct Vector {
+    float x_dir;
+    float y_dir;
+};
+
 // functions
 Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > points, const int id);
 int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y);
@@ -71,6 +84,7 @@ float angleWeight(float p1x, float p1y, float p2x, float p2y);
 float movingAverage(float displace_bin);
 Point2f getHistogramMode(Mat histogram);
 Point2f getHistogramMean(Mat histogram);
+float angleFromVecs(struct Vector v1, struct Vector v2);
 
 
 
@@ -271,29 +285,136 @@ int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
       float - horizontal displacement
 */
 
+float angleFromVecs(struct Vector v1, struct Vector v2) {
+    float normP1 = sqrt(pow(v1.x_dir,2) + pow(v1.y_dir,2));
+    float normP2 = sqrt(pow(v2.x_dir,2) + pow(v2.y_dir,2));
+
+    // unit vectors
+    v1.x_dir /= normP1;
+    v1.y_dir /= normP1;
+    v2.x_dir /= normP2;
+    v2.y_dir /= normP2;
+
+    float angle = acos(v1.x_dir*v2.x_dir + v1.y_dir*v2.y_dir);
+
+    return angle;
+}
+
+
 int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const int id) {
 
     // find the midpoint of the line segment along the horizontal displacement
-    float midPoint = (p1x + p2x)/2;
+
+    // float midPoint = (p1x + p2x)/2;
 
     // resulting displacment from center of the road
     float displacement = -1;
 
     // exclude lines far away from the camera
-    if((p1y + p2y)/2 > 0) {return displacement;}
+    if((p1y + p2y)/2 > -200) {return displacement;}
 
-    // right white lanes
-    if(id == 3 && midPoint > CENTER_X) {
-        displacement = (ROAD_WIDTH/2) - abs(CENTER_X - midPoint);
+///////////////////////////////////////////////////////////////////////
+// option 1
+    
+    // float px;
+    // float py;
+
+    // if(p1y <= p2y) {
+    //     px = p1x;
+    //     py = p1y;
+    // }
+    // else {
+    //     px = p2x;
+    //     py = p2y;
+    // }
+
+/////////////////////////////////////////////////////////////////////////
+// option 2
+
+    float px_low;
+    float py_low;
+    float px_high;
+    float py_high;
+
+    if(p1y <= p2y) {
+        px_low = p1x; 
+        py_low = p1y; 
+        px_high = p2x;
+        py_high = p2y;
+    }
+    else {
+        px_low = p2x; 
+        py_low = p2y; 
+        px_high = p1x;
+        py_high = p1y;
+    }
+
+///////////////////////////////////////////////////////////////////////////
+// option 1
+    // float slope = ((p1x-p2x)/(p1y-p2y));
+    // midPoint += slope*(CENTER_Y - 75);
+    // roadWidth = sqrt(pow(ROAD_WIDTH/2, 2) + pow(CENTER_Y-75, 2));
+
+///////////////////////////////////////////////////////////////////////////
+//option 2
+
+    // distance to closest lane line point
+    Vector v1;
+    v1.x_dir = (CENTER_X-px_low);
+    v1.y_dir = (BODY_Y-py_low);
+
+    // lane line vector
+    Vector v2;
+    v2.x_dir = (px_low-px_high);
+    v2.y_dir = (py_low-py_high);
+
+    float angle = angleFromVecs(v1, v2);
+
+    if(id == 3 && px_low > CENTER_X) {
+        displacement = (ROAD_WIDTH/2) - sin(angle)*sqrt(pow(CENTER_X-px_low,2) + pow(BODY_Y-py_low,2));
     }
     // yellow lanes
-    else if(id == 2 && midPoint < CENTER_X && midPoint > 0) {
-        displacement = -((ROAD_WIDTH/2) - abs(CENTER_X - midPoint));
+    else if(id == 2 && px_low < CENTER_X && px_low > 0) {
+        displacement = -((ROAD_WIDTH/2) - sin(angle)*sqrt(pow(CENTER_X-px_low,2) + pow(BODY_Y-py_low,2)));
     }
     // bad lane line detections should be ignored
     else {
         return displacement;
     }
+
+
+///////////////////////////////////////////////////////////////////////////
+// option 1
+    // if(id == 3 && px > CENTER_X) {
+    //     displacement = (ROAD_WIDTH/2) - sqrt(pow(CENTER_X-px,2) + pow(BODY_Y-py,2));
+    // }
+    // // yellow lanes
+    // else if(id == 2 && px < CENTER_X && px > 0) {
+    //     displacement = -((ROAD_WIDTH/2) - sqrt(pow(CENTER_X-px,2) + pow(BODY_Y-py,2)));
+    // }
+    // // bad lane line detections should be ignored
+    // else {
+    //     return displacement;
+    // }
+
+
+//////////////////////////////////////////////////////////////////////////////
+// original
+
+    // right white lanes
+    // if(id == 3 && midPoint > CENTER_X) {
+    //     displacement = (ROAD_WIDTH/2) - abs(CENTER_X - midPoint);
+    // }
+    // // yellow lanes
+    // else if(id == 2 && midPoint < CENTER_X && midPoint > 0) {
+    //     displacement = -((ROAD_WIDTH/2) - abs(CENTER_X - midPoint));
+    // }
+    // // bad lane line detections should be ignored
+    // else {
+    //     return displacement;
+    // }
+
+///////////////////////////////////////////////////////////////////////////
 
     // cout << ((displacement/(ROAD_WIDTH/2))+0.5) << endl;
     displacement = int(((displacement/(ROAD_WIDTH/2))+0.5)*DISPLACE_BINS);
