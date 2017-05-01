@@ -12,13 +12,13 @@ LEFT_MOTOR_PORT = 1
 RIGHT_MOTOR_PORT = 2
 
 # max/min PWM values for left/right motors
-LEFT_MOTOR_MIN_PWM = 80 #80
-LEFT_MOTOR_MAX_PWM = 210 #210;
-RIGHT_MOTOR_MIN_PWM = 80
-RIGHT_MOTOR_MAX_PWM = 210 #255;
+LEFT_MOTOR_MIN_PWM = 61 #80
+LEFT_MOTOR_MAX_PWM = 255 #210;
+RIGHT_MOTOR_MIN_PWM = 61
+RIGHT_MOTOR_MAX_PWM = 255 #255;
 
-# the ideal pwm for driving straight
-STEADY_PWM = 40+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
+# the ideal pwm for driving straight //-20
+STEADY_PWM = -20+LEFT_MOTOR_MIN_PWM+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
 
 # motors
 global left_motor
@@ -27,8 +27,8 @@ global right_motor
 def callback(msg):
     if(math.isnan(msg.data[0]) or math.isnan(msg.data[1])):
         return
-    print(int(msg.data[0]))
-    print(int(msg.data[1]))
+    #print(int(msg.data[0]))
+    #print(int(msg.data[1]))
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
 
     # myMotor.run(Adafruit_MotorHAT.FORWARD)

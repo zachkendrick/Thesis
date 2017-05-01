@@ -31,18 +31,18 @@ using namespace std;
 using namespace ros;
 
 // PID coefficients
-const static float K_P = 120;
+const static float K_P = 200;
 const static float K_I = 0;
-const static float K_D = 40;
+const static float K_D = 20;//50
 
 // max/min PWM values for left/right motors
-const static int LEFT_MOTOR_MIN_PWM = 80; //80
-const static int LEFT_MOTOR_MAX_PWM = 210; //210;
-const static int RIGHT_MOTOR_MIN_PWM = 80;
-const static int RIGHT_MOTOR_MAX_PWM = 210; //210;
+const static int LEFT_MOTOR_MIN_PWM = 61; //80
+const static int LEFT_MOTOR_MAX_PWM = 255; //210;
+const static int RIGHT_MOTOR_MIN_PWM = 61;
+const static int RIGHT_MOTOR_MAX_PWM = 255; //210;
 
-// the ideal pwm for driving straight
-const static int STEADY_PWM = 40+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
+// the ideal pwm for driving straight //-20
+const static int STEADY_PWM = -20+LEFT_MOTOR_MIN_PWM+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
 
 // ideal position of the car
 const static float CENTER_X = 315;
@@ -61,7 +61,6 @@ float err_I;
 
 // car pose publisher
 ros::Publisher pwm_pub;
-
 
 
 /*
@@ -87,7 +86,14 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
     float disp_err = (msg->pose.position.x - CENTER_X)/(ROAD_WIDTH/2);
 
     // take a weighted sum of the angle and displacement error
-    float error = -0.8*disp_err + angle_err;
+    float error;
+    if(abs(angle_err) < 0.03) error = -disp_err;
+    else error = angle_err;
+    //cout << error << endl;
+    //float error = -disp_err + angle_err;
+    //cout << "--------" << endl;
+    //cout << -disp_err << endl;
+    //cout << angle_err << endl;
 
     // calculate time ellapsed
     timeval time;

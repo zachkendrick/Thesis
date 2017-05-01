@@ -45,7 +45,7 @@ const static float CENTER_X = 315;
 const static float CENTER_Y = -340;
 
 // ideal position of the body of the car (around axels)
-const static float BODY_Y = CENTER_Y - 400;
+const static float BODY_Y = CENTER_Y - 300;
 
 // ideal position of road lanes
 const static float CENTER_LINE = 130;
@@ -311,7 +311,7 @@ int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const in
     float displacement = -1;
 
     // exclude lines far away from the camera
-    if((p1y + p2y)/2 > -200) {return displacement;}
+    if((p1y + p2y)/2 > 0) {return displacement;}
 
 ///////////////////////////////////////////////////////////////////////
 // option 1
