@@ -37,7 +37,7 @@ using namespace ros;
 using namespace tf2;
 
 // number of bins in 2D histogram
-const static float ANGLE_BINS = 60.0; 
+const static float ANGLE_BINS = 60.0;
 const static float DISPLACE_BINS = 60.0;
 
 // ideal position of the car
@@ -45,14 +45,14 @@ const static float CENTER_X = 315;
 const static float CENTER_Y = -340;
 
 // ideal position of the body of the car (around axels)
-const static float BODY_Y = CENTER_Y - 300;
+const static float BODY_Y = CENTER_Y - 400;
 
 // ideal position of road lanes
 const static float CENTER_LINE = 130;
 const static float RIGHT_LINE = 530;
 
 // the width of the road for horizontal displacement in rviz units
-const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE; //2*sqrt(pow((RIGHT_LINE - CENTER_LINE)/2, 2) + pow(BODY_Y - CENTER_Y, 2));;
+const static float ROAD_WIDTH = RIGHT_LINE - CENTER_LINE;
 
 // moving average window size
 const static int AVG_WINDOW = 10;
@@ -66,11 +66,7 @@ queue<float> displace_avg;
 // previous pose estimate
 Point2f prev_state;
 
-// struct Point {
-//     float x;
-//     float y;
-// }
-
+// 2D vector struct
 struct Vector {
     float x_dir;
     float y_dir;
@@ -196,6 +192,17 @@ Mat histogram2D(const vector<geometry_msgs::Point_<std::allocator<void> > > poin
     return hist;
 }
 
+
+
+/*
+   Function:
+      Computes the moving average over a window of values. 
+   Parameters:
+      float disp_val - the most recent value to recompute the moving average with
+   Returns:
+      float - average value over a window size
+*/
+
 float movingAverage(float disp_val) {
     if(displace_avg.size() == AVG_WINDOW) {
         displace_avg.pop();
@@ -213,6 +220,19 @@ float movingAverage(float disp_val) {
 }
 
 
+
+/*
+   Function:
+      Computes the weight given to each line segment angle based on a distance cost function. 
+   Parameters:
+      float p1x - x value of the first point
+      float p1y - y value of the first point
+      float p2x - x value of the second point
+      float p2y - y value of the second point
+   Returns:
+      float - the angle weight given to that line segment
+*/
+
 float angleWeight(float p1x, float p1y, float p2x, float p2y) {
 
     float midPointX = (p1x + p2x)/2;
@@ -220,19 +240,16 @@ float angleWeight(float p1x, float p1y, float p2x, float p2y) {
     float x = abs((CENTER_X - midPointX)/1000);
     float y = abs((CENTER_Y - midPointY)/1000);
 
-    // euclidean distance
-    // float dist = pow(x, 2) + pow(y, 2);
-    float dist = x + pow(y, 2); //10
+    // cost function
+    float dist = x + pow(y, 2);
 
     // cost function
     float weight = exp(-dist);
 
-    // cout << "distance: " << dist << endl;
-    // cout << "weight: " << weight << endl;
-
     if(dist < 0.45) return weight;
     else return 0.0;              
 }
+
 
 
 /*
@@ -271,18 +288,12 @@ int lineSegmentAngle(float p1x, float p1y, float p2x, float p2y) {
 
 /*
    Function:
-      Computes the horizontal displacement from the road center
-      of a line segment given the cartesian coordinates of the 
-      end points that define the line segment.
+      Computes the angle between two vectors.
    Parameters:
-      float p1x - x value of the first point
-      float p1y - y value of the first point
-      float p2x - x value of the second point
-      float p2y - y value of the second point
-      const int id - the message id of the lane lines, id=2 (white lanes) and id=3 (yellow lanes)
-      const float ROAD_WIDTH - the width of a lane in a roadway in rviz units
+      struct Vector v1 - the 1st vector
+      struct Vector v2 - the 2nd vector
    Returns:
-      float - horizontal displacement
+      float - the angle between the vector in radians
 */
 
 float angleFromVecs(struct Vector v1, struct Vector v2) {
@@ -301,35 +312,28 @@ float angleFromVecs(struct Vector v1, struct Vector v2) {
 }
 
 
+
+/*
+   Function:
+      Computes the estimated horizontal displacement of the vehicle given a line segment.
+   Parameters:
+      float p1x - x value of the first point
+      float p1y - y value of the first point
+      float p2x - x value of the second point
+      float p2y - y value of the second point
+      const int id - the id of the line segment (for center or outer lane markings)
+   Returns:
+      float - the bin of the horizontal displacement of the vehicle
+*/
+
 int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const int id) {
-
-    // find the midpoint of the line segment along the horizontal displacement
-
-    // float midPoint = (p1x + p2x)/2;
 
     // resulting displacment from center of the road
     float displacement = -1;
 
     // exclude lines far away from the camera
-    if((p1y + p2y)/2 > 0) {return displacement;}
+    if((p1y + p2y)/2 > -200) {return displacement;}
 
-///////////////////////////////////////////////////////////////////////
-// option 1
-    
-    // float px;
-    // float py;
-
-    // if(p1y <= p2y) {
-    //     px = p1x;
-    //     py = p1y;
-    // }
-    // else {
-    //     px = p2x;
-    //     py = p2y;
-    // }
-
-/////////////////////////////////////////////////////////////////////////
-// option 2
 
     float px_low;
     float py_low;
@@ -348,15 +352,6 @@ int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const in
         px_high = p1x;
         py_high = p1y;
     }
-
-///////////////////////////////////////////////////////////////////////////
-// option 1
-    // float slope = ((p1x-p2x)/(p1y-p2y));
-    // midPoint += slope*(CENTER_Y - 75);
-    // roadWidth = sqrt(pow(ROAD_WIDTH/2, 2) + pow(CENTER_Y-75, 2));
-
-///////////////////////////////////////////////////////////////////////////
-//option 2
 
     // distance to closest lane line point
     Vector v1;
@@ -382,47 +377,11 @@ int lineSegmentDisplacement(float p1x, float p1y, float p2x, float p2y, const in
         return displacement;
     }
 
-
-///////////////////////////////////////////////////////////////////////////
-// option 1
-    // if(id == 3 && px > CENTER_X) {
-    //     displacement = (ROAD_WIDTH/2) - sqrt(pow(CENTER_X-px,2) + pow(BODY_Y-py,2));
-    // }
-    // // yellow lanes
-    // else if(id == 2 && px < CENTER_X && px > 0) {
-    //     displacement = -((ROAD_WIDTH/2) - sqrt(pow(CENTER_X-px,2) + pow(BODY_Y-py,2)));
-    // }
-    // // bad lane line detections should be ignored
-    // else {
-    //     return displacement;
-    // }
-
-
-//////////////////////////////////////////////////////////////////////////////
-// original
-
-    // right white lanes
-    // if(id == 3 && midPoint > CENTER_X) {
-    //     displacement = (ROAD_WIDTH/2) - abs(CENTER_X - midPoint);
-    // }
-    // // yellow lanes
-    // else if(id == 2 && midPoint < CENTER_X && midPoint > 0) {
-    //     displacement = -((ROAD_WIDTH/2) - abs(CENTER_X - midPoint));
-    // }
-    // // bad lane line detections should be ignored
-    // else {
-    //     return displacement;
-    // }
-
-///////////////////////////////////////////////////////////////////////////
-
-    // cout << ((displacement/(ROAD_WIDTH/2))+0.5) << endl;
     displacement = int(((displacement/(ROAD_WIDTH/2))+0.5)*DISPLACE_BINS);
     
     // displacement bins bound check
     if(displacement >= DISPLACE_BINS) displacement = DISPLACE_BINS-1;
     else if(displacement < 0) displacement = 0;
-    // cout << displacement << endl;
     return displacement; 
 }
 
@@ -462,7 +421,7 @@ Point2f getHistogramMode(Mat histogram) {
 /*
    Function:
       Finds the mean of a 2D histogram. Returns
-      a point with the angle and displacement of the mode.
+      a point with the angle and displacement of the mean.
    Parameters:
       Mat histogram - 2D histogram of angle and displacement
    Returns:

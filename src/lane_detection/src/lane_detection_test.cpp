@@ -47,22 +47,9 @@ const static float WHITE[4] = {1.0, 1.0, 1.0, 1.0};
 const int horizon = 220; 
 
 // homography matrix
-// const Matx33f H(-1.27373e-05, -0.0002421778, -0.1970125,
-                 // 0.001029818, -1.578045e-05, -0.337324,
-                 // -0.0001088811, -0.007584862, 1.0);
-
-// Matx33f H(500, -292.25848, 43838.77,
-//  0, 66.63887, 65004.168,
-//  0, -0.91330779, 636.99615);
-//Matx33f H(500, -289.94067, 43491.094,
-//	  0, 75.660027, 63650.992,
-//	  0, -0.90606457, 635.90967);
-
-// 26
-Matx33f H(500, -287.53461, 43130.195,
- 0, 84.658173, 62301.273,
- 0, -0.89854568, 634.78186);
-// const Matx33f H(1.136692e-05, -0.0002660425, -0.2579768, 0.001225021, -1.298795e-05, -0.391406, -0.0002660613, -0.008794414, 1);
+Matx33f H(500, -279.79456, 41969.18,
+	  0, 111.48711, 58276.93,
+	  0, -0.87435794, 631.15369);
 
 /*
    Function:
@@ -81,8 +68,6 @@ void imageLanePoints(const sensor_msgs::ImageConstPtr& msg)
   try
   {
     Mat frame;
-    // Mat frame_undistort; // added
-    //Mat mask_undistort; // added
     Mat edges; 
     Mat centerMarkings;
     Mat outerMarkings;
@@ -249,55 +234,6 @@ Mat centerLaneMarkings(Mat edges, Mat frame) {
    Returns:
       The visualization_msgs with the ground projected line segments
 */
-
-// visualization_msgs::Marker groundProjection(vector<Vec4i> lines, visualization_msgs::Marker line_list, const float color[]) {
-  
-//   // Line list is red
-//   line_list.color.r = color[0];
-//   line_list.color.g = color[1];
-//   line_list.color.b = color[2];
-//   line_list.color.a = color[3];
-
-//   for(size_t i = 0; i < lines.size(); i++)
-//   {
-//     Vec4i l = lines[i];
-//     Matx31f P1(l[0], l[1], 1.0);
-//     Matx31f P2(l[2], l[3], 1.0);
-
-//     cv::Mat gndPoint1 = Mat(H * P1);
-//     cv::Mat gndPoint2 = Mat(H * P2);
-
-//     geometry_msgs::Point p1;
-//     geometry_msgs::Point p2;
-
-//     // note the flip in axis
-//     p1.z = 0.0;
-//     p1.y = -gndPoint1.at<float>(1)/gndPoint1.at<float>(0);
-//     p1.x = gndPoint1.at<float>(2)/gndPoint1.at<float>(0);
-//     p2.z = 0.0;
-//     p2.y = -gndPoint2.at<float>(1)/gndPoint2.at<float>(0);
-//     p2.x = gndPoint2.at<float>(2)/gndPoint2.at<float>(0);
-
-//     // uncomment for straight lines and comment above lines (set z = 6.0 line 243-44)
-//     // p1.x = gndPoint1.at<float>(2)/gndPoint1.at<float>(0)+2.645;
-//     // p1.y = -(gndPoint1.at<float>(1)*(gndPoint1.at<float>(2)*0.15)/gndPoint1.at<float>(0))+0.485;
-//     // p1.z = 0.0;
-//     // p2.x = gndPoint2.at<float>(2)/gndPoint2.at<float>(0)+2.645;
-//     // p2.y = -(gndPoint2.at<float>(1)*(gndPoint2.at<float>(2)*0.15)/gndPoint2.at<float>(0))+0.485;
-//     // p2.z = 0.0;
-
-    
-//     // The line list needs two points for each line
-//     line_list.points.push_back(p1);
-//     line_list.points.push_back(p2);
-//   }
-
-//   return line_list;
-// }
-
-
-
-
 
 visualization_msgs::Marker groundProjection(vector<Vec4i> lines, visualization_msgs::Marker line_list, const float color[]) {
   

@@ -6,7 +6,7 @@
  *  of the vehicle using a PID controller.
  *
  *  Subscribers: pose_estimate
- *  Publishers: N/A
+ *  Publishers: motor_pwm
  *
  *  Author: Zachary Kendrick
  ************************************************/
@@ -33,15 +33,15 @@ using namespace ros;
 // PID coefficients
 const static float K_P = 200;
 const static float K_I = 0;
-const static float K_D = 20;//50
+const static float K_D = 20;
 
 // max/min PWM values for left/right motors
-const static int LEFT_MOTOR_MIN_PWM = 61; //80
-const static int LEFT_MOTOR_MAX_PWM = 255; //210;
+const static int LEFT_MOTOR_MIN_PWM = 61;
+const static int LEFT_MOTOR_MAX_PWM = 255;
 const static int RIGHT_MOTOR_MIN_PWM = 61;
-const static int RIGHT_MOTOR_MAX_PWM = 255; //210;
+const static int RIGHT_MOTOR_MAX_PWM = 255;
 
-// the ideal pwm for driving straight //-20
+// the ideal pwm for driving straight
 const static int STEADY_PWM = -20+LEFT_MOTOR_MIN_PWM+(LEFT_MOTOR_MAX_PWM-LEFT_MOTOR_MIN_PWM)/2;
 
 // ideal position of the car
@@ -89,11 +89,6 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
     float error;
     if(abs(angle_err) < 0.03) error = -disp_err;
     else error = angle_err;
-    //cout << error << endl;
-    //float error = -disp_err + angle_err;
-    //cout << "--------" << endl;
-    //cout << -disp_err << endl;
-    //cout << angle_err << endl;
 
     // calculate time ellapsed
     timeval time;
@@ -103,12 +98,6 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
 
     // calculate I and D error
     err_I += (error * dt);
-    //cout << time.tv_usec << endl;
-    //cout << time.tv_sec << endl;
-    //cout << sizeof(time.tv_sec) << endl;
-    //cout << dt << endl;
-    //cout << present_time << endl;
-    //cout << "----------" << endl;
     float err_D = (error - prev_error)/dt;
 
     // compute PID output
@@ -120,9 +109,8 @@ void PID(const visualization_msgs::MarkerConstPtr& msg) {
 
     // publish the PWMs from the PID output
     std_msgs::Float64MultiArray motor_pwm;
-    motor_pwm.data.push_back(STEADY_PWM+output);//left_motor_pwm;
-    motor_pwm.data.push_back(STEADY_PWM-output);//right_motor_pwm;
-    // cout << motor_pwm << endl;
+    motor_pwm.data.push_back(STEADY_PWM+output); //left_motor_pwm;
+    motor_pwm.data.push_back(STEADY_PWM-output); //right_motor_pwm;
     pwm_pub.publish(motor_pwm);
 
 }

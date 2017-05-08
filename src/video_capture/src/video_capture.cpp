@@ -32,8 +32,8 @@ int main(int argc, char** argv)
     image_transport::Publisher raw_image_pub = it.advertise("raw_image", 1);
 
     // change camera input
-    //VideoCapture cap("small_turn.mp4");
-    VideoCapture cap(0);
+    VideoCapture cap("track.mp4");
+    // VideoCapture cap(0);
     if(!cap.isOpened()) 
         return -1;
     // Mat frame;
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
 
         msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frameSmall).toImageMsg();
         raw_image_pub.publish(msg);
-        //imshow("frame", frameSmall);
+        imshow("frame", frameSmall);
         if(waitKey(1) >= 0) break;
         }
 
